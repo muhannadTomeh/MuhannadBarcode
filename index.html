@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Label Studio Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg:#0a0a0c; --panel:#111115; --panel2:#16161b; --panel3:#1c1c23;
+  --b1:#222228; --b2:#2e2e38; --b3:#3a3a48;
+  --acc:#c8ff00; --acc2:#00d4ff; --acc3:#ff6b35;
+  --txt:#f2f2f5; --txt2:#9090a8; --txt3:#55556a;
+  --sel:#c8ff0033; --sel-b:#c8ff0088;
+  --danger:#ff4444;
+
+  /* 1mm at 96dpi = 3.7795px. Preview at 4× = 15.118px/mm */
+  --SCALE: 4;
+  --MM: 3.7795px;
+
+  /* Label physical: 50mm × 25mm */
+  --LW: calc(50 * 3.7795px);   /* 188.975 */
+  --LH: calc(25 * 3.7795px);   /* 94.4875 */
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:'Geist',sans-serif;
+  display:grid;grid-template-rows:48px 1fr;
+}
+
+/* ══ TOPBAR ══ */
+.topbar{
+  background:var(--panel);border-bottom:1px solid var(--b1);
+  display:flex;align-items:center;padding:0 16px;gap:12px;
+  flex-shrink:0;
+}
+.logo{font-family:'Geist Mono',monospace;font-weight:700;font-size:13px;color:var(--txt);}
+.logo span{color:var(--acc);}
+.top-sep{width:1px;height:24px;background:var(--b2);}
+.top-btns{display:flex;gap:6px;align-items:center;}
+.tbtn{
+  display:flex;align-items:center;gap:6px;padding:5px 12px;
+  font-family:'Geist Mono',monospace;font-size:11px;font-weight:500;
+  letter-spacing:.5px;border:none;cursor:pointer;transition:all .12s;
+}
+.tbtn-add{background:var(--panel3);color:var(--txt2);border:1px solid var(--b2);}
+.tbtn-add:hover{border-color:var(--b3);color:var(--txt);}
+.tbtn-print{background:var(--acc);color:#000;font-weight:700;}
+.tbtn-print:hover{background:#fff;}
+.tbtn-dl{background:transparent;color:var(--txt2);border:1px solid var(--b2);}
+.tbtn-dl:hover{border-color:var(--acc2);color:var(--acc2);}
+.tbtn-clear{background:transparent;color:var(--txt3);border:1px solid var(--b1);}
+.tbtn-clear:hover{border-color:var(--danger);color:var(--danger);}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.dim-badge{
+  font-family:'Geist Mono',monospace;font-size:10px;color:var(--txt3);
+  border:1px solid var(--b1);padding:3px 9px;letter-spacing:1px;
+}
+
+/* ══ MAIN ══ */
+.main{display:grid;grid-template-columns:260px 1fr 240px;overflow:hidden;}
+
+/* ══ LEFT PANEL ══ */
+.left-panel{
+  background:var(--panel);border-right:1px solid var(--b1);
+  overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:4px;
+}
+.left-panel::-webkit-scrollbar{width:3px;}
+.left-panel::-webkit-scrollbar-thumb{background:var(--b2);}
+
+.panel-title{
+  font-family:'Geist Mono',monospace;font-size:9px;font-weight:600;
+  letter-spacing:2.5px;text-transform:uppercase;color:var(--acc);
+  padding:10px 0 8px;border-bottom:1px solid var(--b1);margin-bottom:6px;
+}
+.panel-title:not(:first-child){margin-top:8px;}
+
+.add-btn{
+  width:100%;padding:9px 12px;background:var(--panel2);border:1px solid var(--b1);
+  color:var(--txt2);font-family:'Geist Mono',monospace;font-size:11px;
+  cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;
+  transition:all .12s;
+}
+.add-btn:hover{background:var(--panel3);border-color:var(--b2);color:var(--txt);}
+.add-btn .ab-icon{
+  width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+  background:var(--b1);font-size:12px;flex-shrink:0;
+}
+
+.el-list-title{font-size:10px;color:var(--txt3);margin:10px 0 4px;letter-spacing:.5px;}
+.el-item{
+  display:flex;align-items:center;gap:6px;padding:6px 8px;
+  background:var(--panel2);border:1px solid var(--b1);margin-bottom:3px;
+  cursor:pointer;transition:all .12s;font-size:11px;font-family:'Geist Mono',monospace;
+}
+.el-item:hover{border-color:var(--b2);}
+.el-item.active{border-color:var(--acc);background:var(--panel3);}
+.el-item .el-type{width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;background:var(--b1);flex-shrink:0;}
+.el-item .el-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt2);}
+.el-item .el-del{color:var(--txt3);cursor:pointer;padding:1px 4px;font-size:12px;}
+.el-item .el-del:hover{color:var(--danger);}
+.no-elements{font-size:11px;color:var(--txt3);padding:12px 8px;text-align:center;font-family:'Geist Mono',monospace;}
+
+/* ══ CANVAS AREA ══ */
+.canvas-area{
+  background:var(--bg);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;
+  position:relative;overflow:hidden;
+}
+.canvas-area::before{
+  content:'';position:absolute;inset:0;
+  background-image:radial-gradient(circle,#1e1e2a 1px,transparent 1px);
+  background-size:20px 20px;pointer-events:none;
+}
+
+/* The label canvas — rendered at TRUE physical px size, then CSS-scaled for display */
+.label-scaler{
+  transform:scale(var(--SCALE));
+  transform-origin:top left;
+  /* no pointer-events changes — events scale correctly */
+}
+.label-wrap{
+  /* Exact physical size: 50mm × 25mm at 96dpi */
+  width:188.975px;height:94.4875px;
+  position:relative;
+  background:#ffffff;
+  overflow:hidden;
+  cursor:crosshair;
+}
+.label-wrap.has-border{box-shadow:0 0 0 0.5px #888;}
+
+/* The preview scaler outer box */
+.preview-outer{
+  position:relative;
+  /* Size = physical × SCALE */
+  width:calc(188.975px * 4);
+  height:calc(94.4875px * 4);
+  box-shadow:0 0 0 1px var(--b2), 0 20px 60px rgba(0,0,0,.6);
+}
+.canvas-hint{
+  position:relative;z-index:1;
+  font-family:'Geist Mono',monospace;font-size:10px;color:var(--txt3);
+  letter-spacing:1.5px;text-align:center;
+}
+
+/* ══ ELEMENT OVERLAY ══ */
+.el-overlay{
+  position:absolute;
+  cursor:move;
+  user-select:none;
+  touch-action:none;
+}
+.el-overlay.selected .el-content{
+  outline:0.5px solid var(--acc);
+}
+.el-overlay .el-content{
+  width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  position:relative;
+}
+.el-overlay .el-content.text-content{
+  white-space:pre;
+  overflow:hidden;
+  align-items:flex-start;
+  justify-content:flex-start;
+}
+
+/* resize handle */
+.resize-handle{
+  position:absolute;width:5px;height:5px;
+  background:var(--acc);border:0.5px solid #000;
+  cursor:se-resize;z-index:10;
+  right:-2.5px;bottom:-2.5px;
+}
+/* rotate handle */
+.rotate-handle{
+  position:absolute;width:5px;height:5px;
+  background:var(--acc2);border:0.5px solid #000;
+  cursor:grab;z-index:10;
+  right:-2.5px;top:-2.5px;border-radius:50%;
+}
+
+/* ══ RIGHT PANEL ══ */
+.right-panel{
+  background:var(--panel);border-left:1px solid var(--b1);
+  overflow-y:auto;padding:12px;
+}
+.right-panel::-webkit-scrollbar{width:3px;}
+.right-panel::-webkit-scrollbar-thumb{background:var(--b2);}
+
+.prop-section{margin-bottom:14px;}
+.prop-title{
+  font-family:'Geist Mono',monospace;font-size:9px;font-weight:600;
+  letter-spacing:2.5px;text-transform:uppercase;color:var(--acc);
+  padding:8px 0 6px;border-bottom:1px solid var(--b1);margin-bottom:8px;
+}
+.prop-row{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;}
+.prop-label{font-family:'Geist Mono',monospace;font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.8px;display:flex;justify-content:space-between;}
+.prop-label span{color:var(--acc);font-size:10px;}
+
+input[type=text],input[type=number],select,textarea{
+  width:100%;background:var(--panel2);border:1px solid var(--b1);
+  color:var(--txt);padding:6px 9px;
+  font-family:'Geist Mono',monospace;font-size:11px;outline:none;
+  transition:border-color .15s;resize:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--acc);}
+select option{background:#16161b;}
+
+input[type=range]{
+  -webkit-appearance:none;width:100%;height:2px;
+  background:var(--b2);outline:none;cursor:pointer;margin-top:2px;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:11px;height:11px;background:var(--acc);cursor:pointer;
+}
+
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.color-row{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--b1);padding:4px 8px;}
+input[type=color]{width:20px;height:20px;border:none;background:none;cursor:pointer;padding:0;}
+.chex{font-family:'Geist Mono',monospace;font-size:11px;color:var(--txt);}
+
+.align-btns{display:flex;gap:3px;}
+.al-btn{
+  flex:1;padding:5px;background:var(--panel2);border:1px solid var(--b1);
+  color:var(--txt3);font-size:11px;cursor:pointer;text-align:center;transition:all .12s;
+}
+.al-btn:hover{color:var(--txt);}
+.al-btn.on{background:var(--acc);color:#000;border-color:var(--acc);}
+
+.no-sel{
+  color:var(--txt3);font-size:11px;text-align:center;padding:30px 12px;
+  font-family:'Geist Mono',monospace;line-height:1.7;
+}
+
+.prop-btn{
+  width:100%;padding:7px;background:var(--panel2);border:1px solid var(--b1);
+  color:var(--txt2);font-family:'Geist Mono',monospace;font-size:11px;
+  cursor:pointer;transition:all .12s;margin-bottom:4px;
+}
+.prop-btn:hover{border-color:var(--b3);color:var(--txt);}
+.prop-btn.danger:hover{border-color:var(--danger);color:var(--danger);}
+
+/* canvas bg toggle */
+.bg-toggle{display:flex;gap:4px;margin-bottom:8px;}
+.bg-opt{
+  flex:1;padding:5px;background:var(--panel2);border:1px solid var(--b1);
+  color:var(--txt3);font-size:10px;font-family:'Geist Mono',monospace;
+  cursor:pointer;text-align:center;
+}
+.bg-opt.on{background:var(--acc);color:#000;border-color:var(--acc);}
+
+/* modal overlay for emoji picker */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;
+  display:none;align-items:center;justify-content:center;
+}
+.modal-overlay.show{display:flex;}
+.modal{
+  background:var(--panel);border:1px solid var(--b2);padding:20px;
+  min-width:300px;max-width:90vw;
+}
+.modal-title{font-family:'Geist Mono',monospace;font-size:12px;font-weight:600;color:var(--txt);margin-bottom:12px;}
+.emoji-grid{display:flex;flex-wrap:wrap;gap:6px;max-height:200px;overflow-y:auto;margin-bottom:12px;}
+.emoji-btn{font-size:22px;cursor:pointer;padding:4px;border-radius:4px;transition:.1s;}
+.emoji-btn:hover{background:var(--b2);}
+.modal-close{padding:7px 16px;background:var(--panel2);border:1px solid var(--b2);color:var(--txt2);font-family:'Geist Mono',monospace;font-size:11px;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">Label<span>Studio</span></div>
+  <div class="top-sep"></div>
+  <div class="top-btns">
+    <button class="tbtn tbtn-add" onclick="addText()">＋ Text</button>
+    <button class="tbtn tbtn-add" onclick="addBarcode()">＋ Barcode</button>
+    <button class="tbtn tbtn-add" onclick="showEmojiPicker()">＋ Emoji</button>
+    <div class="top-sep"></div>
+    <button class="tbtn tbtn-clear" onclick="clearAll()">✕ Clear</button>
+  </div>
+  <div class="top-right">
+    <div class="dim-badge">50 × 25 mm · WYSIWYG</div>
+    <button class="tbtn tbtn-dl" onclick="dlPNG()">↓ PNG</button>
+    <button class="tbtn tbtn-print" onclick="doPrint()">⎙ Print</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- LEFT: Elements list -->
+  <aside class="left-panel">
+    <div class="panel-title">Add Element</div>
+    <button class="add-btn" onclick="addText()">
+      <div class="ab-icon">T</div>
+      <span>Text</span>
+    </button>
+    <button class="add-btn" onclick="addBarcode()">
+      <div class="ab-icon">▌▌</div>
+      <span>Barcode</span>
+    </button>
+    <button class="add-btn" onclick="showEmojiPicker()">
+      <div class="ab-icon">★</div>
+      <span>Emoji / Sticker</span>
+    </button>
+
+    <div class="panel-title" style="margin-top:8px">Elements</div>
+    <div id="elList"><div class="no-elements">No elements yet.<br>Add from above.</div></div>
+
+    <div class="panel-title" style="margin-top:8px">Canvas</div>
+    <div class="prop-row">
+      <div class="prop-label">Background</div>
+      <div class="color-row">
+        <input type="color" id="canvasBg" value="#ffffff" oninput="setCanvasBg(this.value)">
+        <span class="chex" id="canvasBgHex">#ffffff</span>
+      </div>
+    </div>
+    <div class="prop-row">
+      <div class="prop-label">Border</div>
+      <div class="bg-toggle">
+        <div class="bg-opt on" onclick="setBorder(true,this)">On</div>
+        <div class="bg-opt" onclick="setBorder(false,this)">Off</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CENTER: Canvas -->
+  <div class="canvas-area" id="canvasArea">
+    <div class="preview-outer" id="previewOuter">
+      <div class="label-scaler">
+        <div class="label-wrap has-border" id="labelCanvas"
+          onmousedown="canvasMouseDown(event)"
+          onclick="canvasClick(event)">
+          <!-- elements rendered here -->
+        </div>
+      </div>
+    </div>
+    <div class="canvas-hint">PREVIEW 4× — PRINTS AT EXACT 50 × 25 mm</div>
+  </div>
+
+  <!-- RIGHT: Properties -->
+  <aside class="right-panel" id="rightPanel">
+    <div class="no-sel">Select an element<br>to edit its properties</div>
+  </aside>
+
+</div>
+
+<!-- Emoji picker modal -->
+<div class="modal-overlay" id="emojiModal">
+  <div class="modal">
+    <div class="modal-title">Pick Emoji / Sticker</div>
+    <div class="emoji-grid" id="emojiGrid"></div>
+    <button class="modal-close" onclick="closeEmojiPicker()">Cancel</button>
+  </div>
+</div>
+
+<canvas id="offCanvas" style="display:none"></canvas>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   PHYSICAL CONSTANTS
+   Label: 50mm × 25mm at 96dpi
+   1mm = 3.7795px  (physical)
+   Preview: CSS scale(4) → visual × 4
+   Export: 300dpi → 1mm = 11.811px → 590 × 295px
+════════════════════════════════════════════════════════════ */
+const MM     = 3.7795;
+const LW     = 50  * MM;   // 188.975 physical px
+const LH     = 25  * MM;   // 94.4875 physical px
+const SCALE  = 4;           // CSS preview scale
+const MM300  = 11.811;
+const EW     = Math.round(50 * MM300);   // 590
+const EH     = Math.round(25 * MM300);   // 295
+
+let elements  = [];
+let selectedId = null;
+let nextId    = 1;
+
+/* ════════════ Element Factories ════════════ */
+function mkText() {
+  return {
+    id: nextId++, type: 'text',
+    x: 5*MM, y: 5*MM, w: 30*MM, h: 6*MM,
+    rotate: 0,
+    text: 'Text',
+    fontSize: 6,       // pt
+    fontWeight: '700',
+    fontFamily: 'Arial, sans-serif',
+    color: '#000000',
+    align: 'left',
+    autoFit: false,
+  };
+}
+function mkBarcode() {
+  return {
+    id: nextId++, type: 'barcode',
+    x: 5*MM, y: 8*MM, w: 38*MM, h: 14*MM,
+    rotate: 0,
+    value: '010001',
+    format: 'CODE128',
+    barWidth: 1,
+    showText: true,
+    numFontSize: 4,    // pt
+    barColor: '#000000',
+    bgColor: 'transparent',
+  };
+}
+function mkEmoji(ch) {
+  return {
+    id: nextId++, type: 'emoji',
+    x: 5*MM, y: 5*MM, w: 8*MM, h: 8*MM,
+    rotate: 0,
+    emoji: ch,
+    fontSize: 7,      // mm
+  };
+}
+
+/* ════════════ State Management ════════════ */
+function addText()    { const el=mkText();    elements.push(el); select(el.id); renderAll(); }
+function addBarcode() { const el=mkBarcode(); elements.push(el); select(el.id); renderAll(); }
+function addEmojiEl(ch){ const el=mkEmoji(ch); elements.push(el); select(el.id); renderAll(); closeEmojiPicker(); }
+function deleteEl(id) {
+  elements = elements.filter(e=>e.id!==id);
+  if(selectedId===id) { selectedId=null; renderProps(); }
+  renderAll();
+}
+function clearAll() {
+  elements=[]; selectedId=null;
+  document.getElementById('labelCanvas').innerHTML='';
+  renderElList(); renderProps();
+}
+function select(id) {
+  selectedId = id;
+  renderAll();
+  renderProps();
+}
+
+function getEl(id) { return elements.find(e=>e.id===id); }
+
+/* ════════════ Canvas background ════════════ */
+function setCanvasBg(v) {
+  document.getElementById('labelCanvas').style.background = v;
+  document.getElementById('canvasBgHex').textContent = v;
+}
+function setBorder(on, btn) {
+  document.querySelectorAll('.bg-opt').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const lc = document.getElementById('labelCanvas');
+  lc.classList.toggle('has-border', on);
+}
+
+/* ════════════ RENDER ════════════ */
+function renderAll() {
+  const canvas = document.getElementById('labelCanvas');
+  canvas.innerHTML = '';
+
+  elements.forEach(el => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'el-overlay' + (el.id===selectedId ? ' selected' : '');
+    wrapper.style.cssText = `
+      left:${el.x}px; top:${el.y}px;
+      width:${el.w}px; height:${el.h}px;
+      transform:rotate(${el.rotate||0}deg);
+      position:absolute;
+    `;
+
+    const content = document.createElement('div');
+    content.className = 'el-content';
+
+    if (el.type === 'text') {
+      content.className += ' text-content';
+      content.style.cssText = `
+        font-size:${el.fontSize * (96/72)}px;
+        font-weight:${el.fontWeight};
+        font-family:${el.fontFamily};
+        color:${el.color};
+        text-align:${el.align};
+        width:100%; height:100%;
+        display:flex; align-items:center;
+        overflow:hidden; white-space:pre-wrap;
+        padding:0.5px;
+      `;
+      if(el.align==='center') content.style.justifyContent='center';
+      else if(el.align==='right') content.style.justifyContent='flex-end';
+      else content.style.justifyContent='flex-start';
+      content.textContent = el.text;
+    }
+    else if (el.type === 'barcode') {
+      content.style.cssText='width:100%;height:100%;overflow:hidden;';
+      const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+      try {
+        JsBarcode(svg, el.value||'0', {
+          format:       el.format,
+          lineColor:    el.barColor,
+          background:   el.bgColor==='transparent'?'transparent':el.bgColor,
+          width:        el.barWidth,
+          height:       el.h * 0.72,
+          margin:       0,
+          displayValue: el.showText,
+          fontSize:     el.numFontSize * (96/72),
+          textMargin:   1,
+          font:         'monospace',
+        });
+        svg.style.width='100%';
+        svg.style.height='100%';
+        content.appendChild(svg);
+      } catch(e) {
+        content.style.background='#fee';
+        content.style.color='red';
+        content.style.fontSize='3px';
+        content.textContent='Invalid';
+      }
+    }
+    else if (el.type === 'emoji') {
+      content.style.cssText=`font-size:${el.fontSize*MM}px;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;`;
+      content.textContent = el.emoji;
+    }
+
+    wrapper.appendChild(content);
+
+    if (el.id === selectedId) {
+      /* resize handle (SE) */
+      const rh = document.createElement('div');
+      rh.className = 'resize-handle';
+      rh.onmousedown = e => { e.stopPropagation(); startResize(e, el); };
+      wrapper.appendChild(rh);
+      /* rotate handle (NE) */
+      const rot = document.createElement('div');
+      rot.className = 'rotate-handle';
+      rot.onmousedown = e => { e.stopPropagation(); startRotate(e, el); };
+      wrapper.appendChild(rot);
+    }
+
+    wrapper.onmousedown = e => { e.stopPropagation(); startDrag(e, el); };
+    wrapper.onclick = e => { e.stopPropagation(); select(el.id); };
+    canvas.appendChild(wrapper);
+  });
+
+  renderElList();
+}
+
+/* ════════════ Drag ════════════ */
+function startDrag(e, el) {
+  select(el.id);
+  const rect = document.getElementById('labelCanvas').getBoundingClientRect();
+  const startX = (e.clientX - rect.left) / SCALE - el.x;
+  const startY = (e.clientY - rect.top)  / SCALE - el.y;
+
+  function onMove(ev) {
+    el.x = Math.max(0, Math.min(LW - el.w, (ev.clientX - rect.left) / SCALE - startX));
+    el.y = Math.max(0, Math.min(LH - el.h, (ev.clientY - rect.top)  / SCALE - startY));
+    renderAll();
+    renderPosProps();
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+/* ════════════ Resize ════════════ */
+function startResize(e, el) {
+  const rect = document.getElementById('labelCanvas').getBoundingClientRect();
+  const startMouseX = e.clientX, startMouseY = e.clientY;
+  const startW = el.w, startH = el.h;
+
+  function onMove(ev) {
+    const dx = (ev.clientX - startMouseX) / SCALE;
+    const dy = (ev.clientY - startMouseY) / SCALE;
+    el.w = Math.max(3*MM, startW + dx);
+    el.h = Math.max(2*MM, startH + dy);
+    renderAll();
+    renderPosProps();
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  e.preventDefault();
+}
+
+/* ════════════ Rotate ════════════ */
+function startRotate(e, el) {
+  const rect = document.getElementById('labelCanvas').getBoundingClientRect();
+  const cx = (el.x + el.w/2) * SCALE + rect.left;
+  const cy = (el.y + el.h/2) * SCALE + rect.top;
+
+  function onMove(ev) {
+    const angle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI + 90;
+    el.rotate = Math.round(angle);
+    renderAll();
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  e.preventDefault();
+}
+
+function canvasMouseDown(e) { /* deselect when clicking empty */ }
+function canvasClick(e) { if(e.target===document.getElementById('labelCanvas')){selectedId=null;renderAll();renderProps();} }
+
+/* ════════════ Element List ════════════ */
+function renderElList() {
+  const list = document.getElementById('elList');
+  if (!elements.length) {
+    list.innerHTML = '<div class="no-elements">No elements yet.<br>Add from above.</div>';
+    return;
+  }
+  list.innerHTML = elements.map(el => `
+    <div class="el-item ${el.id===selectedId?'active':''}" onclick="select(${el.id})">
+      <div class="el-type">${el.type==='text'?'T':el.type==='barcode'?'▌':'★'}</div>
+      <div class="el-name">${el.type==='text'?el.text:el.type==='barcode'?'BC:'+el.value:el.emoji}</div>
+      <div class="el-del" onclick="event.stopPropagation();deleteEl(${el.id})">✕</div>
+    </div>
+  `).join('');
+}
+
+/* ════════════ Properties Panel ════════════ */
+function renderProps() {
+  const panel = document.getElementById('rightPanel');
+  const el = getEl(selectedId);
+  if (!el) { panel.innerHTML = '<div class="no-sel">Select an element<br>to edit properties</div>'; return; }
+
+  if (el.type === 'text')    renderTextProps(panel, el);
+  else if (el.type === 'barcode') renderBcProps(panel, el);
+  else if (el.type === 'emoji')   renderEmojiProps(panel, el);
+}
+
+function renderPosProps() {
+  // re-render just position/size without full rebuild
+  const el = getEl(selectedId);
+  if (!el) return;
+  ['px','py','pw','ph','prot'].forEach(id => {
+    const inp = document.getElementById(id);
+    if (!inp) return;
+    if(id==='px') inp.value = mmFmt(el.x/MM);
+    if(id==='py') inp.value = mmFmt(el.y/MM);
+    if(id==='pw') inp.value = mmFmt(el.w/MM);
+    if(id==='ph') inp.value = mmFmt(el.h/MM);
+    if(id==='prot') inp.value = el.rotate||0;
+  });
+}
+
+function mmFmt(v) { return Math.round(v*10)/10; }
+
+function posSection(el) {
+  return `
+  <div class="prop-section">
+    <div class="prop-title">Position & Size</div>
+    <div class="row2">
+      <div class="prop-row"><div class="prop-label">X (mm)</div>
+        <input type="number" id="px" value="${mmFmt(el.x/MM)}" step="0.5" oninput="updPos('x',this.value)"></div>
+      <div class="prop-row"><div class="prop-label">Y (mm)</div>
+        <input type="number" id="py" value="${mmFmt(el.y/MM)}" step="0.5" oninput="updPos('y',this.value)"></div>
+      <div class="prop-row"><div class="prop-label">W (mm)</div>
+        <input type="number" id="pw" value="${mmFmt(el.w/MM)}" step="0.5" oninput="updPos('w',this.value)"></div>
+      <div class="prop-row"><div class="prop-label">H (mm)</div>
+        <input type="number" id="ph" value="${mmFmt(el.h/MM)}" step="0.5" oninput="updPos('h',this.value)"></div>
+    </div>
+    <div class="prop-row"><div class="prop-label">Rotate (°)</div>
+      <input type="number" id="prot" value="${el.rotate||0}" step="1" oninput="updProp('rotate',parseFloat(this.value)||0)"></div>
+  </div>`;
+}
+
+function renderTextProps(panel, el) {
+  panel.innerHTML = `
+  <div class="prop-section">
+    <div class="prop-title">Text</div>
+    <div class="prop-row"><div class="prop-label">Content</div>
+      <textarea rows="2" oninput="updProp('text',this.value)">${el.text}</textarea></div>
+    <div class="row2">
+      <div class="prop-row"><div class="prop-label">Size (pt) <span id="fsv">${el.fontSize}</span></div>
+        <input type="range" min="3" max="18" step="0.5" value="${el.fontSize}" oninput="document.getElementById('fsv').textContent=this.value;updProp('fontSize',parseFloat(this.value))"></div>
+      <div class="prop-row"><div class="prop-label">Weight</div>
+        <select onchange="updProp('fontWeight',this.value)">
+          <option value="400" ${el.fontWeight==='400'?'selected':''}>Regular</option>
+          <option value="600" ${el.fontWeight==='600'?'selected':''}>SemiBold</option>
+          <option value="700" ${el.fontWeight==='700'?'selected':''}>Bold</option>
+          <option value="900" ${el.fontWeight==='900'?'selected':''}>Black</option>
+        </select></div>
+    </div>
+    <div class="prop-row"><div class="prop-label">Font</div>
+      <select onchange="updProp('fontFamily',this.value)">
+        <option value="Arial, sans-serif" ${el.fontFamily.includes('Arial')?'selected':''}>Arial</option>
+        <option value="'Arial Black', sans-serif" ${el.fontFamily.includes('Black')?'selected':''}>Arial Black</option>
+        <option value="'Courier New', monospace" ${el.fontFamily.includes('Courier')?'selected':''}>Courier New</option>
+        <option value="Georgia, serif" ${el.fontFamily.includes('Georgia')?'selected':''}>Georgia</option>
+        <option value="Impact, sans-serif" ${el.fontFamily.includes('Impact')?'selected':''}>Impact</option>
+        <option value="Verdana, sans-serif" ${el.fontFamily.includes('Verdana')?'selected':''}>Verdana</option>
+      </select></div>
+    <div class="prop-row"><div class="prop-label">Color</div>
+      <div class="color-row">
+        <input type="color" value="${el.color}" oninput="updProp('color',this.value);this.nextElementSibling.textContent=this.value">
+        <span class="chex">${el.color}</span></div></div>
+    <div class="prop-row"><div class="prop-label">Align</div>
+      <div class="align-btns">
+        <div class="al-btn ${el.align==='left'?'on':''}" onclick="updProp('align','left');rerenderAlignBtns('left')">L</div>
+        <div class="al-btn ${el.align==='center'?'on':''}" onclick="updProp('align','center');rerenderAlignBtns('center')">C</div>
+        <div class="al-btn ${el.align==='right'?'on':''}" onclick="updProp('align','right');rerenderAlignBtns('right')">R</div>
+      </div></div>
+  </div>
+  ${posSection(el)}
+  <button class="prop-btn danger" onclick="deleteEl(${el.id})">✕ Delete Element</button>`;
+}
+
+function renderBcProps(panel, el) {
+  panel.innerHTML = `
+  <div class="prop-section">
+    <div class="prop-title">Barcode</div>
+    <div class="prop-row"><div class="prop-label">Value</div>
+      <input type="text" value="${el.value}" oninput="updProp('value',this.value)"></div>
+    <div class="prop-row"><div class="prop-label">Format</div>
+      <select onchange="updProp('format',this.value)">
+        ${['CODE128','CODE39','EAN13','EAN8','UPC','ITF14','MSI','pharmacode'].map(f=>`<option ${el.format===f?'selected':''}>${f}</option>`).join('')}
+      </select></div>
+    <div class="prop-row"><div class="prop-label">Bar Width <span id="bwv">${el.barWidth}</span></div>
+      <input type="range" min="0.5" max="3" step="0.25" value="${el.barWidth}" oninput="document.getElementById('bwv').textContent=this.value;updProp('barWidth',parseFloat(this.value))"></div>
+    <div class="prop-row"><div class="prop-label">Show Number</div>
+      <div class="align-btns">
+        <div class="al-btn ${el.showText?'on':''}" onclick="updProp('showText',true);this.classList.add('on');this.nextSibling.classList.remove('on')">On</div>
+        <div class="al-btn ${!el.showText?'on':''}" onclick="updProp('showText',false);this.classList.add('on');this.previousSibling.classList.remove('on')">Off</div>
+      </div></div>
+    <div class="prop-row"><div class="prop-label">Number Size (pt) <span id="nfsv">${el.numFontSize}</span></div>
+      <input type="range" min="2" max="10" step="0.5" value="${el.numFontSize}" oninput="document.getElementById('nfsv').textContent=this.value;updProp('numFontSize',parseFloat(this.value))"></div>
+    <div class="prop-row"><div class="prop-label">Bar Color</div>
+      <div class="color-row">
+        <input type="color" value="${el.barColor}" oninput="updProp('barColor',this.value);this.nextElementSibling.textContent=this.value">
+        <span class="chex">${el.barColor}</span></div></div>
+  </div>
+  ${posSection(el)}
+  <button class="prop-btn danger" onclick="deleteEl(${el.id})">✕ Delete Element</button>`;
+}
+
+function renderEmojiProps(panel, el) {
+  panel.innerHTML = `
+  <div class="prop-section">
+    <div class="prop-title">Emoji</div>
+    <div class="prop-row"><div class="prop-label">Emoji</div>
+      <input type="text" value="${el.emoji}" oninput="updProp('emoji',this.value)"></div>
+    <div class="prop-row"><div class="prop-label">Size (mm) <span id="efsv">${el.fontSize}</span></div>
+      <input type="range" min="2" max="20" step="0.5" value="${el.fontSize}" oninput="document.getElementById('efsv').textContent=this.value;updProp('fontSize',parseFloat(this.value))"></div>
+    <button class="prop-btn" onclick="showEmojiPicker()">Change Emoji</button>
+  </div>
+  ${posSection(el)}
+  <button class="prop-btn danger" onclick="deleteEl(${el.id})">✕ Delete Element</button>`;
+}
+
+function rerenderAlignBtns(v) {
+  document.querySelectorAll('.al-btn').forEach(b => {
+    if(['L','C','R'].includes(b.textContent)) {
+      b.classList.toggle('on', (v==='left'&&b.textContent==='L')||(v==='center'&&b.textContent==='C')||(v==='right'&&b.textContent==='R'));
+    }
+  });
+}
+
+function updProp(key, val) {
+  const el = getEl(selectedId);
+  if (!el) return;
+  el[key] = val;
+  renderAll();
+}
+function updPos(key, val) {
+  const el = getEl(selectedId);
+  if (!el) return;
+  const v = parseFloat(val) * MM;
+  if      (key==='x') el.x = Math.max(0, Math.min(LW-el.w, v));
+  else if (key==='y') el.y = Math.max(0, Math.min(LH-el.h, v));
+  else if (key==='w') el.w = Math.max(3*MM, v);
+  else if (key==='h') el.h = Math.max(2*MM, v);
+  renderAll();
+}
+
+/* ════════════ Emoji Picker ════════════ */
+const EMOJIS = ['★','☆','♠','♣','♥','♦','✓','✗','!','?','→','←','↑','↓',
+  '🔴','🟢','🔵','🟡','🟠','⚫','⚪','🔶','🔷','🔸','🔹',
+  '❤️','🔥','⚡','🌟','💡','🎯','📦','🏷️','✅','⚠️','🚫','💲','€','$','%','#','@'];
+
+function showEmojiPicker() {
+  const grid = document.getElementById('emojiGrid');
+  grid.innerHTML = EMOJIS.map(e=>`<div class="emoji-btn" onclick="addEmojiEl('${e}')">${e}</div>`).join('');
+  document.getElementById('emojiModal').classList.add('show');
+}
+function closeEmojiPicker() { document.getElementById('emojiModal').classList.remove('show'); }
+
+/* ════════════ EXPORT ════════════ */
+/* For print/PNG: render each element onto a 300dpi canvas */
+function buildExportCanvas(cb) {
+  const canvas = document.getElementById('offCanvas');
+  canvas.width = EW; canvas.height = EH;
+  const ctx = canvas.getContext('2d');
+
+  /* background */
+  const bg = document.getElementById('canvasBg').value;
+  ctx.fillStyle = bg;
+  ctx.fillRect(0,0,EW,EH);
+
+  /* scale from physical-96dpi to 300dpi */
+  const S = MM300 / MM;  // ~3.125
+
+  /* Process elements sequentially (some need async image loading) */
+  const queue = [...elements];
+  function processNext() {
+    if (!queue.length) { cb(canvas); return; }
+    const el = queue.shift();
+    const ex = el.x * S, ey = el.y * S;
+    const ew = el.w * S, eh = el.h * S;
+
+    ctx.save();
+    /* apply rotation around element center */
+    if (el.rotate) {
+      ctx.translate(ex + ew/2, ey + eh/2);
+      ctx.rotate(el.rotate * Math.PI/180);
+      ctx.translate(-(ex + ew/2), -(ey + eh/2));
+    }
+
+    if (el.type === 'text') {
+      const fs = el.fontSize * (300/72);
+      ctx.font = `${el.fontWeight} ${fs}px ${el.fontFamily}`;
+      ctx.fillStyle = el.color;
+      ctx.textBaseline = 'top';
+      ctx.textAlign = el.align;
+      const tx = el.align==='center' ? ex+ew/2 : el.align==='right' ? ex+ew : ex;
+      /* word wrap */
+      const words = el.text.split('\n');
+      let ly = ey + 1;
+      words.forEach(line => {
+        ctx.fillText(line, tx, ly, ew);
+        ly += fs * 1.25;
+      });
+    }
+    else if (el.type === 'emoji') {
+      const fs = el.fontSize * MM300;
+      ctx.font = `${fs}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(el.emoji, ex+ew/2, ey+eh/2);
+    }
+    else if (el.type === 'barcode') {
+      /* render barcode to temp SVG → image */
+      const tmp = document.createElementNS('http://www.w3.org/2000/svg','svg');
+      tmp.style.cssText='position:absolute;top:-9999px;';
+      document.body.appendChild(tmp);
+      const bh = eh * 0.78;
+      const bw = Math.max(1, el.barWidth * S * 0.5);
+      const nfs = el.numFontSize * (300/72);
+      let ok = true;
+      try {
+        JsBarcode(tmp, el.value||'0', {
+          format:       el.format,
+          lineColor:    el.barColor,
+          background:   'transparent',
+          width:        bw,
+          height:       bh * 0.8,
+          margin:       0,
+          displayValue: el.showText,
+          fontSize:     nfs,
+          textMargin:   2,
+          font:         'monospace',
+        });
+      } catch(e){ ok=false; }
+      tmp.setAttribute('width', ew);
+      tmp.setAttribute('height', eh);
+      tmp.setAttribute('xmlns','http://www.w3.org/2000/svg');
+      const svgStr = new XMLSerializer().serializeToString(tmp);
+      document.body.removeChild(tmp);
+      if (!ok) { ctx.restore(); processNext(); return; }
+      const blob = new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
+      const url  = URL.createObjectURL(blob);
+      const img  = new Image();
+      img.onload = function(){
+        ctx.drawImage(img, ex, ey, ew, eh);
+        URL.revokeObjectURL(url);
+        ctx.restore();
+        processNext();
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); ctx.restore(); processNext(); };
+      img.src = url;
+      return;
+    }
+    ctx.restore();
+    processNext();
+  }
+  processNext();
+}
+
+function doPrint() {
+  buildExportCanvas(function(canvas) {
+    const png = canvas.toDataURL('image/png');
+    const w = window.open('','_blank');
+    if (!w) { alert('Please allow pop-ups to print'); return; }
+    const bg = document.getElementById('canvasBg').value;
+    w.document.write(
+      '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+      +'<style>*{margin:0;padding:0;}@page{size:50mm 25mm;margin:0;}'
+      +'html,body{width:50mm;height:25mm;overflow:hidden;background:'+bg+';}'
+      +'img{width:50mm;height:25mm;display:block;image-rendering:crisp-edges;}'
+      +'</style></head><body>'
+      +'<img id="i" src="'+png+'">'
+      +'<script>var i=document.getElementById("i");'
+      +'function p(){window.focus();window.print();setTimeout(function(){window.close();},900);}'
+      +'i.onload=p;if(i.complete)p();<\/script>'
+      +'</body></html>'
+    );
+    w.document.close();
+  });
+}
+
+function dlPNG() {
+  buildExportCanvas(function(canvas) {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'label-300dpi.png';
+    a.click();
+  });
+}
+
+/* keyboard delete */
+document.addEventListener('keydown', e => {
+  if ((e.key==='Delete'||e.key==='Backspace') && selectedId!==null) {
+    const tag = document.activeElement.tagName;
+    if (tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+    deleteEl(selectedId);
+  }
+  if (e.key==='Escape') { selectedId=null; renderAll(); renderProps(); }
+});
+</script>
+</body>
+</html>
